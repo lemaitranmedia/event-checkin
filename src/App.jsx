@@ -27,6 +27,9 @@ async function dbGetOne(id) {
   const data = await res.json();
   return data[0] || null;
 }
+async function dbDeleteOne(id) {
+  await fetch(`${SUPABASE_URL}/rest/v1/guests?id=eq.${id}`, { method: "DELETE", headers: { ...HEADERS, "Prefer": "return=minimal" } });
+}
 function toGuest(r) {
   return { id: r.id, name: r.name, activity: r.activity, timeslot: r.timeslot, registeredAt: r.registered_at, checkedIn: r.checked_in, checkedInAt: r.checked_in_at, checkedInBy: r.checked_in_by };
 }
@@ -78,14 +81,39 @@ function AdminLogin({ onLogin }) {
         <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Nhập mật khẩu để tiếp tục</div>
       </div>
       <input type="password" value={pw} onChange={e => { setPw(e.target.value); setError(""); }}
-        onKeyDown={e => e.key === "Enter" && handleLogin()}
-        placeholder="Mật khẩu Admin..."
-        style={{ width: "100%", padding: "13px 14px", borderRadius: 10, fontSize: 16, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#dde4f0"}`, outline: "none", marginBottom: 8 }}
-        autoFocus />
+        onKeyDown={e => e.key === "Enter" && handleLogin()} placeholder="Mật khẩu Admin..."
+        style={{ width: "100%", padding: "13px 14px", borderRadius: 10, fontSize: 16, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#dde4f0"}`, outline: "none", marginBottom: 8 }} autoFocus />
       {error && <div style={{ color: "#a32d2d", fontSize: 13, marginBottom: 8 }}>⚠️ {error}</div>}
-      <button onClick={handleLogin} style={{ width: "100%", padding: "13px 0", background: "#185FA5", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 16 }}>
-        Đăng nhập
-      </button>
+      <button onClick={handleLogin} style={{ width: "100%", padding: "13px 0", background: "#185FA5", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 16 }}>Đăng nhập</button>
+    </div>
+  );
+}
+
+function DeleteGuestModal({ guest, onConfirm, onCancel }) {
+  const [pw, setPw] = useState("");
+  const [error, setError] = useState("");
+  function handleConfirm() {
+    if (pw === ADMIN_PASSWORD) { onConfirm(); }
+    else { setError("Mật khẩu không đúng."); }
+  }
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 360, width: "94%", boxSizing: "border-box" }}>
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🗑️</div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "#a32d2d" }}>Xóa khách hàng?</div>
+          <div style={{ fontSize: 14, color: "#555", marginTop: 6 }}><b>{guest.name}</b> — #{guest.id}</div>
+          <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Hành động này không thể hoàn tác.</div>
+        </div>
+        <input type="password" value={pw} onChange={e => { setPw(e.target.value); setError(""); }}
+          onKeyDown={e => e.key === "Enter" && handleConfirm()} placeholder="Nhập mật khẩu Admin..."
+          style={{ width: "100%", padding: "11px 14px", borderRadius: 8, fontSize: 14, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#ddd"}`, outline: "none", marginBottom: 8 }} autoFocus />
+        {error && <div style={{ color: "#a32d2d", fontSize: 12, marginBottom: 8 }}>⚠️ {error}</div>}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: "10px 0", border: "1px solid #ddd", borderRadius: 8, background: "#f5f5f5", cursor: "pointer", fontSize: 14 }}>Hủy</button>
+          <button onClick={handleConfirm} style={{ flex: 1, padding: "10px 0", background: "#e24b4a", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Xóa</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -119,38 +147,7 @@ function TicketModal({ guest, onClose }) {
   );
 }
 
-function DeleteGuestModal({ guest, onConfirm, onCancel }) {
-  const [pw, setPw] = useState("");
-  const [error, setError] = useState("");
-  function handleConfirm() {
-    if (pw === ADMIN_PASSWORD) { onConfirm(); }
-    else { setError("Mật khẩu không đúng."); }
-  }
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 360, width: "94%", boxSizing: "border-box" }}>
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 36, marginBottom: 8 }}>🗑️</div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#a32d2d" }}>Xóa khách hàng?</div>
-          <div style={{ fontSize: 14, color: "#555", marginTop: 6 }}><b>{guest.name}</b> — #{guest.id}</div>
-          <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Hành động này không thể hoàn tác.</div>
-        </div>
-        <input type="password" value={pw} onChange={e => { setPw(e.target.value); setError(""); }}
-          onKeyDown={e => e.key === "Enter" && handleConfirm()}
-          placeholder="Nhập mật khẩu Admin..."
-          style={{ width: "100%", padding: "11px 14px", borderRadius: 8, fontSize: 14, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#ddd"}`, outline: "none", marginBottom: 8 }}
-          autoFocus />
-        {error && <div style={{ color: "#a32d2d", fontSize: 12, marginBottom: 8 }}>⚠️ {error}</div>}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: "10px 0", border: "1px solid #ddd", borderRadius: 8, background: "#f5f5f5", cursor: "pointer", fontSize: 14 }}>Hủy</button>
-          <button onClick={handleConfirm} style={{ flex: 1, padding: "10px 0", background: "#e24b4a", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Xóa</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
+function CheckinScreen({ guestId, onCheckin, onBack }) {
   const [guest, setGuest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [secret, setSecret] = useState("");
@@ -254,6 +251,7 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [checkinId, setCheckinId] = useState(null);
   const [checkinDone, setCheckinDone] = useState(null);
+  const [manualId, setManualId] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
@@ -293,7 +291,18 @@ export default function App() {
 
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "16px 12px", fontFamily: "sans-serif" }}>
-      {deleteTarget && <DeleteGuestModal guest={deleteTarget} onConfirm={async () => { await dbDeleteOne(deleteTarget.id); setGuests(prev => prev.filter(g => g.id !== deleteTarget.id)); setDeleteTarget(null); }} onCancel={() => setDeleteTarget(null)} />}}
+      {ticket && <TicketModal guest={ticket} onClose={() => setTicket(null)} />}
+      {deleteTarget && (
+        <DeleteGuestModal
+          guest={deleteTarget}
+          onConfirm={async () => {
+            await dbDeleteOne(deleteTarget.id);
+            setGuests(prev => prev.filter(g => g.id !== deleteTarget.id));
+            setDeleteTarget(null);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
         <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>🎪 Hệ thống Check-in Sự kiện</div>
         <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 8, fontSize: 13 }}>
@@ -371,6 +380,7 @@ export default function App() {
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <button onClick={() => setTicket(g)} style={{ padding: "5px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#f5f5f5", cursor: "pointer", fontSize: 12 }}>🎫 Vé</button>
                 {!g.checkedIn && <button onClick={() => setCheckinId(g.id)} style={{ padding: "5px 10px", border: "none", borderRadius: 6, background: "#185FA5", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>Check-in</button>}
+                <button onClick={() => setDeleteTarget(g)} style={{ padding: "5px 10px", border: "none", borderRadius: 6, background: "#e24b4a", color: "#fff", cursor: "pointer", fontSize: 12 }}>🗑️</button>
               </div>
             </div>
           ))}
