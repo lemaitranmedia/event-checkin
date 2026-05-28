@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 
 const SUPABASE_URL = "https://fjzrcvuivtpevxzadwfy.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqenJjdnVpdnRwZXZ4emFkd2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDg0NDEsImV4cCI6MjA5NTUyNDQ0MX0.lMOCRTaj3xeaT[...]
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqenJjdnVpdnRwZXZ4emFkd2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDg0NDEsImV4cCI6MjA5NTUyNDQ0MX0.lMOCRTaj3x_sample_key";
 const HEADERS = { "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` };
 
 const ACTIVITIES = ["Workshop nước hoa", "Workshop cắm hoa", "Cả 2", "Chưa xác định"];
@@ -119,7 +119,7 @@ function TicketModal({ guest, onClose }) {
         </div>
         <div style={{ fontSize: 11, color: "#ccc", textAlign: "center", marginBottom: 14 }}>Vé chỉ dành cho 1 người • Không chuyển nhượng</div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => window.print()} style={{ flex: 1, padding: "10px 0", border: "1px solid #ddd", borderRadius: 8, background: "#f5f5f5", cursor: "pointer", fontSize: 14 }}>🖨️ In vé</button>
+          <button onClick={() => window.print()} style={{ flex: 1, padding: "10px 0", border: "1px solid #ddd", borderRadius: 8, background: "#f5f5f5", cursor: "pointer", fontSize: 14 }}>🖨️ In</button>
           <button onClick={onClose} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 8, background: "#185FA5", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Đóng</button>
         </div>
       </div>
@@ -228,7 +228,7 @@ function CheckinScreen({ guestId, onCheckin, onBack }) {
           style={{ width: "100%", padding: "13px 14px", borderRadius: 10, fontSize: 16, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#dde4f0"}`, outline: "none" }} autoFocus />
         {error && <div style={{ color: "#a32d2d", fontSize: 13, marginTop: 6 }}>⚠️ {error}</div>}
       </div>
-      <button onClick={handleConfirm} style={{ width: "100%", padding: "16px 0", background: "#3B6D11", color: "#fff", border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 800, fontSize: 16 }}>✅ Xác nhận Check-in</button>
+      <button onClick={handleConfirm} style={{ width: "100%", padding: "16px 0", background: "#3B6D11", color: "#fff", border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 800, fontSize: 16 }}>✔️ Xác nhận Check-in</button>
       <button onClick={onBack} style={{ width: "100%", padding: "10px 0", background: "none", border: "1px solid #ddd", borderRadius: 10, cursor: "pointer", color: "#888", fontSize: 14, marginTop: 8 }}>← Quay lại</button>
     </div>
   );
@@ -332,7 +332,7 @@ export default function App() {
         </div>
       </div>
       <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "#f0f0f0", borderRadius: 10, padding: 4 }}>
-        {tabs.map(t => <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: "9px 4px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: tab === t.key ? 700 : 400, background: tab === t.key ? "#185FA5" : "transparent", color: tab === t.key ? "#fff" : "#555", fontSize: 12 }}>{t.label}</button>)}
+        {tabs.map(t => <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: "9px 4px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: tab === t.key ? 700 : 400, background: tab === t.key ? "#185FA5" : "transparent", color: tab === t.key ? "#fff" : "#555", fontSize: 13 }}>{t.label}</button>)}
       </div>
       {tab === "register" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -393,7 +393,7 @@ export default function App() {
           {loading && <div style={{ textAlign: "center", padding: 32, color: "#888" }}>⏳ Đang tải...</div>}
           {!loading && filtered.length === 0 && <div style={{ color: "#999", textAlign: "center", padding: 32 }}>Chưa có khách hàng nào</div>}
           {filtered.map(g => (
-            <div key={g.id} style={{ background: "#fff", border: `1px solid ${g.checkedIn ? "#97C459" : "#e0e0e0"}`, borderRadius: 10, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
+            <div key={g.id} style={{ background: "#fff", border: `1px solid ${g.checkedIn ? "#97C459" : "#e0e0e0"}`, borderRadius: 10, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 10 }}>
               <div style={{ fontSize: 22, flexShrink: 0 }}>{g.checkedIn ? "✅" : "⏳"}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{g.name}</div>
@@ -402,7 +402,7 @@ export default function App() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <button onClick={() => setTicket(g)} style={{ padding: "5px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#f5f5f5", cursor: "pointer", fontSize: 12 }}>🎫 Vé</button>
-                {!g.checkedIn && <button onClick={() => setCheckinId(g.id)} style={{ padding: "5px 10px", border: "none", borderRadius: 6, background: "#185FA5", color: "#fff", cursor: "pointer", fontSize: 12 }}>📷</button>}
+                {!g.checkedIn && <button onClick={() => setCheckinId(g.id)} style={{ padding: "5px 10px", border: "none", borderRadius: 6, background: "#185FA5", color: "#fff", cursor: "pointer", fontSize: 12 }}>✓ Check-in</button>}
               </div>
             </div>
           ))}
