@@ -162,7 +162,7 @@ function CheckinScreen({ guestId, onCheckin, onBack }) {
   );
 }
 
-function CheckinSuccess({ guest, onBack }) {
+function CheckinSuccess({ guest }) {
   return (
     <div style={{ textAlign: "center", padding: "48px 24px" }}>
       <div style={{ fontSize: 72, marginBottom: 12 }}>🎉</div>
@@ -171,7 +171,10 @@ function CheckinSuccess({ guest, onBack }) {
       <div style={{ color: "#888", fontSize: 14, marginBottom: 4 }}>{guest.activity} · {guest.timeslot}</div>
       <div style={{ color: "#aaa", fontSize: 13, marginBottom: 4 }}>Ghi nhận lúc: {guest.checkedInAt}</div>
       <div style={{ color: "#aaa", fontSize: 13, marginBottom: 32 }}>Xác nhận bởi: <b>{guest.checkedInBy}</b></div>
-      <button onClick={onBack} style={{ padding: "13px 36px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 15 }}>← Quay lại trang chủ</button>
+      <button onClick={() => { window.history.replaceState({}, "", window.location.pathname); window.location.reload(); }}
+        style={{ padding: "13px 36px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 15 }}>
+        📷 Scan vé tiếp theo
+      </button>
     </div>
   );
 }
@@ -219,8 +222,8 @@ export default function App() {
   const filtered = guests.filter(g => g.name.toLowerCase().includes(search.toLowerCase()) || g.id.includes(search));
   const checkedInCount = guests.filter(g => g.checkedIn).length;
 
-  if (checkinDone) return <div style={{ maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}><CheckinSuccess guest={checkinDone} onBack={handleBack} /></div>;
-  if (checkinId) return <div style={{ maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}><CheckinScreen guestId={checkinId} onCheckin={handleCheckin} onBack={handleBack} /></div>;
+  if (checkinDone) return <div style={{ maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}><CheckinSuccess guest={checkinDone} /></div>;
+  if (checkinId) return <div style={{ maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}><CheckinScreen guestId={checkinId} onCheckin={handleCheckin} onBack={() => { window.history.replaceState({}, "", window.location.pathname); setCheckinId(null); }} /></div>;
 
   const tabs = [{ key: "register", label: "📝 Đăng ký" }, { key: "checkin", label: "📷 Check-in" }, { key: "list", label: `👥 DS (${guests.length})` }];
 
