@@ -1,5 +1,8 @@
-// CLEAN VERSION - 1 export default only
 import { useState, useRef, useEffect } from "react";
+
+const SUPABASE_URL = "https://fjzrcvuivtpevxzadwfy.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqenJjdnVpdnRwZXZ4emFkd2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDg0NDEsImV4cCI6MjA5NTUyNDQ0MX0.lMOCRTaj3xeaTagohksZgZrXa-0PCwUmRZYdGQ7Luq4";
+const HEADERS = { "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` };
 
 const ACTIVITIES = ["Workshop nước hoa", "Workshop cắm hoa", "Cả 2", "Chưa xác định"];
 const TIMESLOTS = ["14:00 - 16:00", "16:00 - 19:00"];
@@ -8,6 +11,26 @@ const BASE_URL = "https://lemaitranmedia.github.io/event-checkin";
 
 function generateId() { return String(Math.floor(100000 + Math.random() * 900000)); }
 function nowStr() { return new Date().toLocaleString("vi-VN", { hour12: false }); }
+
+async function dbGetAll() {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/guests?select=*&order=registered_at.desc`, { headers: HEADERS });
+  return res.json();
+}
+async function dbInsert(g) {
+  await fetch(`${SUPABASE_URL}/rest/v1/guests`, { method: "POST", headers: { ...HEADERS, "Prefer": "return=minimal" }, body: JSON.stringify({ id: g.id, name: g.name, activity: g.activity, timeslot: g.timeslot, registered_at: g.registeredAt, checked_in: false, checked_in_at: null, checked_in_by: null }) });
+}
+async function dbCheckin(id, btcCode, time) {
+  await fetch(`${SUPABASE_URL}/rest/v1/guests?id=eq.${id}`, { method: "PATCH", headers: { ...HEADERS, "Prefer": "return=minimal" }, body: JSON.stringify({ checked_in: true, checked_in_at: time, checked_in_by: btcCode }) });
+}
+async function dbGetOne(id) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/guests?id=eq.${id}&select=*`, { headers: HEADERS });
+  const data = await res.json();
+  return data[0] || null;
+}
+
+function toGuest(r) {
+  return { id: r.id, name: r.name, activity: r.activity, timeslot: r.timeslot, registeredAt: r.registered_at, checkedIn: r.checked_in, checkedInAt: r.checked_in_at, checkedInBy: r.checked_in_by };
+}
 
 function useQRCode() {
   const [ready, setReady] = useState(!!window.QRCode);
@@ -27,11 +50,7 @@ function QRCodeBox({ value, size = 180 }) {
   useEffect(() => {
     if (!qrReady || !ref.current) return;
     ref.current.innerHTML = "";
-    new window.QRCode(ref.current, {
-      text: value, width: size, height: size,
-      colorDark: "#000000", colorLight: "#ffffff",
-      correctLevel: window.QRCode.CorrectLevel.M,
-    });
+    new window.QRCode(ref.current, { text: value, width: size, height: size, colorDark: "#000000", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M });
   }, [qrReady, value, size]);
   return <div ref={ref} style={{ display: "inline-block", borderRadius: 8, overflow: "hidden" }} />;
 }
@@ -74,11 +93,17 @@ function TicketModal({ guest, onClose }) {
   );
 }
 
-function CheckinScreen({ guestId, guests, onCheckin, onBack }) {
+function CheckinScreen({ guestId, onCheckin, onBack }) {
+  const [guest, setGuest] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [secret, setSecret] = useState("");
   const [error, setError] = useState("");
-  const [shake, setShake] = useState(false);
-  const guest = guests.find(g => g.id === guestId);
+
+  useEffect(() => {
+    dbGetOne(guestId).then(r => { setGuest(r ? toGuest(r) : null); setLoading(false); });
+  }, [guestId]);
+
+  if (loading) return <div style={{ textAlign: "center", padding: 48, fontSize: 16, color: "#888" }}>⏳ Đang tải thông tin...</div>;
 
   if (!guest) return (
     <div style={{ textAlign: "center", padding: 48 }}>
@@ -100,13 +125,12 @@ function CheckinScreen({ guestId, guests, onCheckin, onBack }) {
     </div>
   );
 
-  function handleConfirm() {
+  async function handleConfirm() {
     const code = secret.trim();
-    if (!BTC_CODES[code]) {
-      setError("Mã bí mật không đúng. Vui lòng thử lại.");
-      setShake(true); setTimeout(() => setShake(false), 500); return;
-    }
-    onCheckin(guest.id, BTC_CODES[code]);
+    if (!BTC_CODES[code]) { setError("Mã bí mật không đúng."); return; }
+    const time = nowStr();
+    await dbCheckin(guest.id, BTC_CODES[code], time);
+    onCheckin({ ...guest, checkedIn: true, checkedInAt: time, checkedInBy: BTC_CODES[code] });
   }
 
   return (
@@ -127,12 +151,9 @@ function CheckinScreen({ guestId, guests, onCheckin, onBack }) {
       </div>
       <div style={{ marginBottom: 16 }}>
         <label style={{ fontSize: 13, fontWeight: 600, color: "#555", display: "block", marginBottom: 6 }}>🔐 Nhập mã BTC để xác nhận</label>
-        <input type="password" value={secret}
-          onChange={e => { setSecret(e.target.value); setError(""); }}
-          onKeyDown={e => e.key === "Enter" && handleConfirm()}
-          placeholder="Nhập mã xác nhận..."
-          style={{ width: "100%", padding: "13px 14px", borderRadius: 10, fontSize: 16, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#dde4f0"}`, outline: "none" }}
-          autoFocus />
+        <input type="password" value={secret} onChange={e => { setSecret(e.target.value); setError(""); }}
+          onKeyDown={e => e.key === "Enter" && handleConfirm()} placeholder="Nhập mã xác nhận..."
+          style={{ width: "100%", padding: "13px 14px", borderRadius: 10, fontSize: 16, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#dde4f0"}`, outline: "none" }} autoFocus />
         {error && <div style={{ color: "#a32d2d", fontSize: 13, marginTop: 6 }}>⚠️ {error}</div>}
       </div>
       <button onClick={handleConfirm} style={{ width: "100%", padding: "16px 0", background: "#3B6D11", color: "#fff", border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 800, fontSize: 18, marginBottom: 10 }}>✅ Xác nhận Check-in</button>
@@ -157,6 +178,7 @@ function CheckinSuccess({ guest, onBack }) {
 
 export default function App() {
   const [guests, setGuests] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("register");
   const [form, setForm] = useState({ name: "", activity: ACTIVITIES[0], timeslot: TIMESLOTS[0] });
   const [ticket, setTicket] = useState(null);
@@ -169,19 +191,20 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
     if (id) { setCheckinId(id); setTab("checkin"); }
+    dbGetAll().then(rows => { setGuests(rows.map(toGuest)); setLoading(false); });
   }, []);
 
-  function handleRegister() {
+  async function handleRegister() {
     if (!form.name.trim()) return;
     const g = { id: generateId(), name: form.name.trim(), activity: form.activity, timeslot: form.timeslot, registeredAt: nowStr(), checkedIn: false, checkedInAt: null, checkedInBy: null };
+    await dbInsert(g);
     setGuests(prev => [g, ...prev]);
     setTicket(g);
     setForm({ name: "", activity: ACTIVITIES[0], timeslot: TIMESLOTS[0] });
   }
 
-  function handleCheckin(id, btcCode) {
-    const updated = { ...guests.find(g => g.id === id), checkedIn: true, checkedInAt: nowStr(), checkedInBy: btcCode };
-    setGuests(prev => prev.map(g => g.id === id ? updated : g));
+  function handleCheckin(updated) {
+    setGuests(prev => prev.map(g => g.id === updated.id ? updated : g));
     setCheckinDone(updated); setCheckinId(null);
     window.history.replaceState({}, "", window.location.pathname);
   }
@@ -197,7 +220,7 @@ export default function App() {
   const checkedInCount = guests.filter(g => g.checkedIn).length;
 
   if (checkinDone) return <div style={{ maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}><CheckinSuccess guest={checkinDone} onBack={handleBack} /></div>;
-  if (checkinId) return <div style={{ maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}><CheckinScreen guestId={checkinId} guests={guests} onCheckin={handleCheckin} onBack={handleBack} /></div>;
+  if (checkinId) return <div style={{ maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}><CheckinScreen guestId={checkinId} onCheckin={handleCheckin} onBack={handleBack} /></div>;
 
   const tabs = [{ key: "register", label: "📝 Đăng ký" }, { key: "checkin", label: "📷 Check-in" }, { key: "list", label: `👥 DS (${guests.length})` }];
 
@@ -262,9 +285,14 @@ export default function App() {
       )}
       {tab === "list" && (
         <div>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Tìm theo tên hoặc mã KH..."
-            style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid #ddd", fontSize: 14, boxSizing: "border-box", marginBottom: 14 }} />
-          {filtered.length === 0 && <div style={{ color: "#999", textAlign: "center", padding: 32 }}>Chưa có khách hàng nào</div>}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Tìm theo tên hoặc mã KH..."
+              style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: "1px solid #ddd", fontSize: 14, boxSizing: "border-box" }} />
+            <button onClick={() => dbGetAll().then(rows => setGuests(rows.map(toGuest)))}
+              style={{ marginLeft: 8, padding: "10px 14px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>🔄 Refresh</button>
+          </div>
+          {loading && <div style={{ textAlign: "center", padding: 32, color: "#888" }}>⏳ Đang tải...</div>}
+          {!loading && filtered.length === 0 && <div style={{ color: "#999", textAlign: "center", padding: 32 }}>Chưa có khách hàng nào</div>}
           {filtered.map(g => (
             <div key={g.id} style={{ background: "#fff", border: `1px solid ${g.checkedIn ? "#97C459" : "#e0e0e0"}`, borderRadius: 10, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ fontSize: 22, flexShrink: 0 }}>{g.checkedIn ? "✅" : "⏳"}</div>
