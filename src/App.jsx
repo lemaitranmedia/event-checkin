@@ -17,18 +17,36 @@ async function dbGetAll() {
   return res.json();
 }
 async function dbInsert(g) {
-  await fetch(`${SUPABASE_URL}/rest/v1/guests`, { method: "POST", headers: { ...HEADERS, "Prefer": "return=minimal" }, body: JSON.stringify({ id: g.id, name: g.name, activity: g.activity, timeslot: g.timeslot, registered_at: g.registeredAt, checked_in: false, checked_in_at: null, checked_in_by: null }) });
+  await fetch(`${SUPABASE_URL}/rest/v1/guests`, {
+    method: "POST",
+    headers: { ...HEADERS, "Prefer": "return=minimal" },
+    body: JSON.stringify({ id: g.id, name: g.name, activity: g.activity, timeslot: g.timeslot, registered_at: g.registeredAt, checked_in: false, checked_in_at: null, checked_in_by: null })
+  });
 }
 async function dbCheckin(id, btcCode, time) {
-  await fetch(`${SUPABASE_URL}/rest/v1/guests?id=eq.${id}`, { method: "PATCH", headers: { ...HEADERS, "Prefer": "return=minimal" }, body: JSON.stringify({ checked_in: true, checked_in_at: time, checked_in_by: btcCode }) });
+  await fetch(`${SUPABASE_URL}/rest/v1/guests?id=eq.${id}`, {
+    method: "PATCH",
+    headers: { ...HEADERS, "Prefer": "return=minimal" },
+    body: JSON.stringify({ checked_in: true, checked_in_at: time, checked_in_by: btcCode })
+  });
 }
 async function dbGetOne(id) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/guests?id=eq.${id}&select=*`, { headers: HEADERS });
   const data = await res.json();
   return data[0] || null;
 }
+async function dbUpdateGuest(id, fields) {
+  await fetch(`${SUPABASE_URL}/rest/v1/guests?id=eq.${id}`, {
+    method: "PATCH",
+    headers: { ...HEADERS, "Prefer": "return=minimal" },
+    body: JSON.stringify(fields)
+  });
+}
 async function dbDeleteOne(id) {
-  await fetch(`${SUPABASE_URL}/rest/v1/guests?id=eq.${id}`, { method: "DELETE", headers: { ...HEADERS, "Prefer": "return=minimal" } });
+  await fetch(`${SUPABASE_URL}/rest/v1/guests?id=eq.${id}`, {
+    method: "DELETE",
+    headers: { ...HEADERS, "Prefer": "return=minimal" }
+  });
 }
 function toGuest(r) {
   return { id: r.id, name: r.name, activity: r.activity, timeslot: r.timeslot, registeredAt: r.registered_at, checkedIn: r.checked_in, checkedInAt: r.checked_in_at, checkedInBy: r.checked_in_by };
@@ -85,6 +103,73 @@ function AdminLogin({ onLogin }) {
         style={{ width: "100%", padding: "13px 14px", borderRadius: 10, fontSize: 16, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#dde4f0"}`, outline: "none", marginBottom: 8 }} autoFocus />
       {error && <div style={{ color: "#a32d2d", fontSize: 13, marginBottom: 8 }}>⚠️ {error}</div>}
       <button onClick={handleLogin} style={{ width: "100%", padding: "13px 0", background: "#185FA5", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 16 }}>Đăng nhập</button>
+    </div>
+  );
+}
+
+function EditGuestModal({ guest, onConfirm, onCancel }) {
+  const [pw, setPw] = useState("");
+  const [pwOk, setPwOk] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [name, setName] = useState(guest.name);
+  const [activity, setActivity] = useState(guest.activity);
+  const [timeslot, setTimeslot] = useState(guest.timeslot);
+
+  function handleAuth() {
+    if (pw === ADMIN_PASSWORD) { setPwOk(true); setPwError(""); }
+    else { setPwError("Mật khẩu không đúng."); }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 380, width: "94%", boxSizing: "border-box" }}>
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 32, marginBottom: 6 }}>✏️</div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "#1a1a2e" }}>Chỉnh sửa thông tin</div>
+          <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>Mã KH #{guest.id} · QR không thay đổi</div>
+        </div>
+        {!pwOk ? (
+          <>
+            <input type="password" value={pw} onChange={e => { setPw(e.target.value); setPwError(""); }}
+              onKeyDown={e => e.key === "Enter" && handleAuth()} placeholder="Nhập mật khẩu Admin..."
+              style={{ width: "100%", padding: "11px 14px", borderRadius: 8, fontSize: 14, boxSizing: "border-box", border: `2px solid ${pwError ? "#e24b4a" : "#ddd"}`, outline: "none", marginBottom: 8 }} autoFocus />
+            {pwError && <div style={{ color: "#a32d2d", fontSize: 12, marginBottom: 8 }}>⚠️ {pwError}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={onCancel} style={{ flex: 1, padding: "10px 0", border: "1px solid #ddd", borderRadius: 8, background: "#f5f5f5", cursor: "pointer", fontSize: 14 }}>Hủy</button>
+              <button onClick={handleAuth} style={{ flex: 1, padding: "10px 0", background: "#185FA5", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Xác nhận</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Họ và tên</label>
+                <input value={name} onChange={e => setName(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", fontSize: 14, boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Activity</label>
+                <select value={activity} onChange={e => setActivity(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", fontSize: 14, background: "#fff" }}>
+                  {ACTIVITIES.map(a => <option key={a}>{a}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Timeslot</label>
+                <select value={timeslot} onChange={e => setTimeslot(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", fontSize: 14, background: "#fff" }}>
+                  {TIMESLOTS.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={onCancel} style={{ flex: 1, padding: "10px 0", border: "1px solid #ddd", borderRadius: 8, background: "#f5f5f5", cursor: "pointer", fontSize: 14 }}>Hủy</button>
+              <button onClick={() => onConfirm({ name: name.trim(), activity, timeslot })}
+                style={{ flex: 1, padding: "10px 0", background: "#3B6D11", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>💾 Lưu</button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -252,6 +337,7 @@ export default function App() {
   const [checkinId, setCheckinId] = useState(null);
   const [checkinDone, setCheckinDone] = useState(null);
   const [manualId, setManualId] = useState("");
+  const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
@@ -272,7 +358,8 @@ export default function App() {
 
   function handleCheckin(updated) {
     setGuests(prev => prev.map(g => g.id === updated.id ? updated : g));
-    setCheckinDone(updated); setCheckinId(null);
+    setCheckinDone(updated);
+    setCheckinId(null);
   }
 
   function openCheckin(raw) {
@@ -292,6 +379,17 @@ export default function App() {
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "16px 12px", fontFamily: "sans-serif" }}>
       {ticket && <TicketModal guest={ticket} onClose={() => setTicket(null)} />}
+      {editTarget && (
+        <EditGuestModal
+          guest={editTarget}
+          onConfirm={async (fields) => {
+            await dbUpdateGuest(editTarget.id, { name: fields.name, activity: fields.activity, timeslot: fields.timeslot });
+            setGuests(prev => prev.map(g => g.id === editTarget.id ? { ...g, ...fields } : g));
+            setEditTarget(null);
+          }}
+          onCancel={() => setEditTarget(null)}
+        />
+      )}
       {deleteTarget && (
         <DeleteGuestModal
           guest={deleteTarget}
@@ -380,6 +478,7 @@ export default function App() {
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <button onClick={() => setTicket(g)} style={{ padding: "5px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#f5f5f5", cursor: "pointer", fontSize: 12 }}>🎫 Vé</button>
                 {!g.checkedIn && <button onClick={() => setCheckinId(g.id)} style={{ padding: "5px 10px", border: "none", borderRadius: 6, background: "#185FA5", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>Check-in</button>}
+                <button onClick={() => setEditTarget(g)} style={{ padding: "5px 10px", border: "none", borderRadius: 6, background: "#F5A623", color: "#fff", cursor: "pointer", fontSize: 12 }}>✏️</button>
                 <button onClick={() => setDeleteTarget(g)} style={{ padding: "5px 10px", border: "none", borderRadius: 6, background: "#e24b4a", color: "#fff", cursor: "pointer", fontSize: 12 }}>🗑️</button>
               </div>
             </div>
