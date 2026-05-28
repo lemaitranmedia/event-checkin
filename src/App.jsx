@@ -163,6 +163,16 @@ function CheckinScreen({ guestId, onCheckin, onBack }) {
 }
 
 function CheckinSuccess({ guest }) {
+  const [done, setDone] = useState(false);
+
+  if (done) return (
+    <div style={{ textAlign: "center", padding: "80px 24px" }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>📱</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 8 }}>Sẵn sàng scan vé tiếp theo</div>
+      <div style={{ fontSize: 14, color: "#888" }}>Dùng app scan QR để tiếp tục</div>
+    </div>
+  );
+
   return (
     <div style={{ textAlign: "center", padding: "48px 24px" }}>
       <div style={{ fontSize: 72, marginBottom: 12 }}>🎉</div>
@@ -171,7 +181,7 @@ function CheckinSuccess({ guest }) {
       <div style={{ color: "#888", fontSize: 14, marginBottom: 4 }}>{guest.activity} · {guest.timeslot}</div>
       <div style={{ color: "#aaa", fontSize: 13, marginBottom: 4 }}>Ghi nhận lúc: {guest.checkedInAt}</div>
       <div style={{ color: "#aaa", fontSize: 13, marginBottom: 32 }}>Xác nhận bởi: <b>{guest.checkedInBy}</b></div>
-      <button onClick={() => { window.history.replaceState({}, "", window.location.pathname); window.location.reload(); }}
+      <button onClick={() => { window.history.replaceState({}, "", window.location.pathname); setDone(true); }}
         style={{ padding: "13px 36px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 15 }}>
         📷 Scan vé tiếp theo
       </button>
