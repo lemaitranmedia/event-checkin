@@ -3,12 +3,11 @@ import { useState, useRef, useEffect } from "react";
 const SUPABASE_URL = "https://fjzrcvuivtpevxzadwfy.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqenJjdnVpdnRwZXZ4emFkd2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDg0NDEsImV4cCI6MjA5NTUyNDQ0MX0.lMOCRTaj3xeaTagohksZgZrXa-0PCwUmRZYdGQ7Luq4";
 const HEADERS = { "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` };
-
 const ACTIVITIES = ["Workshop nước hoa", "Workshop cắm hoa", "Cả 2", "Chưa xác định"];
 const TIMESLOTS = ["14:00 - 16:00", "16:00 - 19:00"];
 const BTC_CODES = { "6003450": "BTC-6003450", "6012470": "BTC-6012470", "6002197": "BTC-6002197" };
-const ADMIN_PASSWORD = "Nh@u2005";
 const BASE_URL = "https://lemaitranmedia.github.io/event-checkin";
+const ADMIN_PASSWORD = "Nh@u2005";
 
 function generateId() { return String(Math.floor(100000 + Math.random() * 900000)); }
 function nowStr() { return new Date().toLocaleString("vi-VN", { hour12: false }); }
@@ -28,39 +27,11 @@ async function dbGetOne(id) {
   const data = await res.json();
   return data[0] || null;
 }
-
 function toGuest(r) {
   return { id: r.id, name: r.name, activity: r.activity, timeslot: r.timeslot, registeredAt: r.registered_at, checkedIn: r.checked_in, checkedInAt: r.checked_in_at, checkedInBy: r.checked_in_by };
 }
 
-function AdminLogin({ onLogin }) {
-  const [pw, setPw] = useState("");
-  const [error, setError] = useState("");
-  function handleLogin() {
-    if (pw === ADMIN_PASSWORD) { onLogin(); }
-    else { setError("Mật khẩu không đúng."); }
-  }
-  return (
-    <div style={{ maxWidth: 360, margin: "80px auto", padding: 24, fontFamily: "sans-serif" }}>
-      <div style={{ textAlign: "center", marginBottom: 24 }}>
-        <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>Trang Quản trị</div>
-        <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Nhập mật khẩu để tiếp tục</div>
-      </div>
-      <input type="password" value={pw} onChange={e => { setPw(e.target.value); setError(""); }}
-        onKeyDown={e => e.key === "Enter" && handleLogin()}
-        placeholder="Mật khẩu Admin..."
-        style={{ width: "100%", padding: "13px 14px", borderRadius: 10, fontSize: 16, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#dde4f0"}`, outline: "none", marginBottom: 8 }}
-        autoFocus />
-      {error && <div style={{ color: "#a32d2d", fontSize: 13, marginBottom: 8 }}>⚠️ {error}</div>}
-      <button onClick={handleLogin} style={{ width: "100%", padding: "13px 0", background: "#185FA5", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 16 }}>
-        Đăng nhập
-      </button>
-    </div>
-  );
-}
-
-
+function useQRCode() {
   const [ready, setReady] = useState(!!window.QRCode);
   useEffect(() => {
     if (window.QRCode) return;
@@ -88,6 +59,33 @@ function Row({ label, value }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "0.5px solid #e8e8e8", fontSize: 14 }}>
       <span style={{ color: "#888" }}>{label}</span>
       <span style={{ fontWeight: 600, color: "#1a1a2e" }}>{value}</span>
+    </div>
+  );
+}
+
+function AdminLogin({ onLogin }) {
+  const [pw, setPw] = useState("");
+  const [error, setError] = useState("");
+  function handleLogin() {
+    if (pw === ADMIN_PASSWORD) { onLogin(); }
+    else { setError("Mật khẩu không đúng."); }
+  }
+  return (
+    <div style={{ maxWidth: 360, margin: "80px auto", padding: 24, fontFamily: "sans-serif" }}>
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>Trang Quản trị</div>
+        <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Nhập mật khẩu để tiếp tục</div>
+      </div>
+      <input type="password" value={pw} onChange={e => { setPw(e.target.value); setError(""); }}
+        onKeyDown={e => e.key === "Enter" && handleLogin()}
+        placeholder="Mật khẩu Admin..."
+        style={{ width: "100%", padding: "13px 14px", borderRadius: 10, fontSize: 16, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#dde4f0"}`, outline: "none", marginBottom: 8 }}
+        autoFocus />
+      {error && <div style={{ color: "#a32d2d", fontSize: 13, marginBottom: 8 }}>⚠️ {error}</div>}
+      <button onClick={handleLogin} style={{ width: "100%", padding: "13px 0", background: "#185FA5", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 16 }}>
+        Đăng nhập
+      </button>
     </div>
   );
 }
@@ -192,7 +190,6 @@ function CheckinScreen({ guestId, onCheckin, onBack }) {
 
 function CheckinSuccess({ guest }) {
   const [done, setDone] = useState(false);
-
   if (done) return (
     <div style={{ textAlign: "center", padding: "80px 24px" }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>📱</div>
@@ -200,7 +197,6 @@ function CheckinSuccess({ guest }) {
       <div style={{ fontSize: 14, color: "#888" }}>Dùng app scan QR để tiếp tục</div>
     </div>
   );
-
   return (
     <div style={{ textAlign: "center", padding: "48px 24px" }}>
       <div style={{ fontSize: 72, marginBottom: 12 }}>🎉</div>
@@ -218,8 +214,9 @@ function CheckinSuccess({ guest }) {
 }
 
 export default function App() {
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [guests, setGuests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [tab, setTab] = useState("register");
   const [form, setForm] = useState({ name: "", activity: ACTIVITIES[0], timeslot: TIMESLOTS[0] });
   const [ticket, setTicket] = useState(null);
@@ -231,7 +228,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
-    if (id) { setCheckinId(id); setTab("checkin"); }
+    if (id) { setCheckinId(id); }
     dbGetAll().then(rows => { setGuests(rows.map(toGuest)); setLoading(false); });
   }, []);
 
@@ -247,10 +244,7 @@ export default function App() {
   function handleCheckin(updated) {
     setGuests(prev => prev.map(g => g.id === updated.id ? updated : g));
     setCheckinDone(updated); setCheckinId(null);
-    window.history.replaceState({}, "", window.location.pathname);
   }
-
-  function handleBack() { setCheckinId(null); setCheckinDone(null); }
 
   function openCheckin(raw) {
     const id = raw.trim().replace(/.*[?&]id=/, "").split("&")[0];
@@ -327,11 +321,11 @@ export default function App() {
       )}
       {tab === "list" && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Tìm theo tên hoặc mã KH..."
               style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: "1px solid #ddd", fontSize: 14, boxSizing: "border-box" }} />
             <button onClick={() => dbGetAll().then(rows => setGuests(rows.map(toGuest)))}
-              style={{ marginLeft: 8, padding: "10px 14px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>🔄 Refresh</button>
+              style={{ padding: "10px 14px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>🔄</button>
           </div>
           {loading && <div style={{ textAlign: "center", padding: 32, color: "#888" }}>⏳ Đang tải...</div>}
           {!loading && filtered.length === 0 && <div style={{ color: "#999", textAlign: "center", padding: 32 }}>Chưa có khách hàng nào</div>}
