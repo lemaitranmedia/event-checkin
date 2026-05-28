@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 
 const SUPABASE_URL = "https://fjzrcvuivtpevxzadwfy.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqenJjdnVpdnRwZXZ4emFkd2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDg0NDEsImV4cCI6MjA5NTUyNDQ0MX0.lMOCRTaj3xeaTagohksZgZrXa-0PCwUmRZYdGQ7Luq4";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqenJjdnVpdnRwZXZ4emFkd2Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NDg0NDEsImV4cCI6MjA5NTUyNDQ0MX0.lMOCRTaj3xeaT[...]
 const HEADERS = { "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` };
+
 const ACTIVITIES = ["Workshop nước hoa", "Workshop cắm hoa", "Cả 2", "Chưa xác định"];
 const TIMESLOTS = ["14:00 - 16:00", "16:00 - 19:00"];
 const BTC_CODES = { "6003450": "BTC-6003450", "6012470": "BTC-6012470", "6002197": "BTC-6002197" };
-const BASE_URL = "https://lemaitranmedia.github.io/event-checkin";
 const ADMIN_PASSWORD = "Nh@u2005";
+const BASE_URL = "https://lemaitranmedia.github.io/event-checkin";
 
 function generateId() { return String(Math.floor(100000 + Math.random() * 900000)); }
 function nowStr() { return new Date().toLocaleString("vi-VN", { hour12: false }); }
@@ -17,7 +18,7 @@ async function dbGetAll() {
   return res.json();
 }
 async function dbInsert(g) {
-  await fetch(`${SUPABASE_URL}/rest/v1/guests`, { method: "POST", headers: { ...HEADERS, "Prefer": "return=minimal" }, body: JSON.stringify({ id: g.id, name: g.name, activity: g.activity, timeslot: g.timeslot, registered_at: g.registeredAt, checked_in: false, checked_in_at: null, checked_in_by: null }) });
+  await fetch(`${SUPABASE_URL}/rest/v1/guests`, { method: "POST", headers: { ...HEADERS, "Prefer": "return=minimal" }, body: JSON.stringify({ id: g.id, name: g.name, activity: g.activity, timeslot: g.timeslot, registered_at: g.registeredAt, checked_in: g.checkedIn, checked_in_at: g.checkedInAt, checked_in_by: g.checkedInBy }) });
 }
 async function dbCheckin(id, btcCode, time) {
   await fetch(`${SUPABASE_URL}/rest/v1/guests?id=eq.${id}`, { method: "PATCH", headers: { ...HEADERS, "Prefer": "return=minimal" }, body: JSON.stringify({ checked_in: true, checked_in_at: time, checked_in_by: btcCode }) });
@@ -27,6 +28,13 @@ async function dbGetOne(id) {
   const data = await res.json();
   return data[0] || null;
 }
+async function dbDeleteAll() {
+  await fetch(`${SUPABASE_URL}/rest/v1/guests`, { 
+    method: "DELETE", 
+    headers: { ...HEADERS, "Prefer": "return=minimal" }
+  });
+}
+
 function toGuest(r) {
   return { id: r.id, name: r.name, activity: r.activity, timeslot: r.timeslot, registeredAt: r.registered_at, checkedIn: r.checked_in, checkedInAt: r.checked_in_at, checkedInBy: r.checked_in_by };
 }
@@ -119,6 +127,44 @@ function TicketModal({ guest, onClose }) {
   );
 }
 
+function ClearListModal({ onConfirm, onCancel }) {
+  const [pw, setPw] = useState("");
+  const [error, setError] = useState("");
+
+  function handleConfirm() {
+    if (pw === ADMIN_PASSWORD) {
+      onConfirm();
+      setPw("");
+    } else {
+      setError("Mật khẩu không đúng.");
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 370, width: "94%", boxSizing: "border-box" }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>⚠️</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#a32d2d" }}>Xóa toàn bộ danh sách?</div>
+          <div style={{ fontSize: 13, color: "#888", marginTop: 8 }}>Hành động này không thể hoàn tác. Nhập mật khẩu admin để xác nhận.</div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <input type="password" value={pw} onChange={e => { setPw(e.target.value); setError(""); }}
+            onKeyDown={e => e.key === "Enter" && handleConfirm()}
+            placeholder="Mật khẩu Admin..."
+            style={{ width: "100%", padding: "11px 14px", borderRadius: 8, fontSize: 14, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#ddd"}`, outline: "none" }}
+            autoFocus />
+          {error && <div style={{ color: "#a32d2d", fontSize: 12, marginTop: 6 }}>⚠️ {error}</div>}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: "10px 0", border: "1px solid #ddd", borderRadius: 8, background: "#f5f5f5", cursor: "pointer", fontSize: 14 }}>Hủy</button>
+          <button onClick={handleConfirm} style={{ flex: 1, padding: "10px 0", background: "#e24b4a", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Xóa</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CheckinScreen({ guestId, onCheckin, onBack }) {
   const [guest, setGuest] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -182,14 +228,15 @@ function CheckinScreen({ guestId, onCheckin, onBack }) {
           style={{ width: "100%", padding: "13px 14px", borderRadius: 10, fontSize: 16, boxSizing: "border-box", border: `2px solid ${error ? "#e24b4a" : "#dde4f0"}`, outline: "none" }} autoFocus />
         {error && <div style={{ color: "#a32d2d", fontSize: 13, marginTop: 6 }}>⚠️ {error}</div>}
       </div>
-      <button onClick={handleConfirm} style={{ width: "100%", padding: "16px 0", background: "#3B6D11", color: "#fff", border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 800, fontSize: 18, marginBottom: 10 }}>✅ Xác nhận Check-in</button>
-      <button onClick={onBack} style={{ width: "100%", padding: "10px 0", background: "none", border: "1px solid #ddd", borderRadius: 10, cursor: "pointer", color: "#888", fontSize: 14 }}>← Quay lại</button>
+      <button onClick={handleConfirm} style={{ width: "100%", padding: "16px 0", background: "#3B6D11", color: "#fff", border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 800, fontSize: 16 }}>✅ Xác nhận Check-in</button>
+      <button onClick={onBack} style={{ width: "100%", padding: "10px 0", background: "none", border: "1px solid #ddd", borderRadius: 10, cursor: "pointer", color: "#888", fontSize: 14, marginTop: 8 }}>← Quay lại</button>
     </div>
   );
 }
 
 function CheckinSuccess({ guest }) {
   const [done, setDone] = useState(false);
+
   if (done) return (
     <div style={{ textAlign: "center", padding: "80px 24px" }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>📱</div>
@@ -197,6 +244,7 @@ function CheckinSuccess({ guest }) {
       <div style={{ fontSize: 14, color: "#888" }}>Dùng app scan QR để tiếp tục</div>
     </div>
   );
+
   return (
     <div style={{ textAlign: "center", padding: "48px 24px" }}>
       <div style={{ fontSize: 72, marginBottom: 12 }}>🎉</div>
@@ -224,6 +272,7 @@ export default function App() {
   const [checkinId, setCheckinId] = useState(null);
   const [checkinDone, setCheckinDone] = useState(null);
   const [manualId, setManualId] = useState("");
+  const [showClearModal, setShowClearModal] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -251,11 +300,21 @@ export default function App() {
     if (id) setCheckinId(id);
   }
 
+  async function handleClearList() {
+    try {
+      await dbDeleteAll();
+      setGuests([]);
+      setShowClearModal(false);
+    } catch (err) {
+      console.error("Lỗi khi xóa danh sách:", err);
+    }
+  }
+
   const filtered = guests.filter(g => g.name.toLowerCase().includes(search.toLowerCase()) || g.id.includes(search));
   const checkedInCount = guests.filter(g => g.checkedIn).length;
 
   if (checkinDone) return <div style={{ maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}><CheckinSuccess guest={checkinDone} /></div>;
-  if (checkinId) return <div style={{ maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}><CheckinScreen guestId={checkinId} onCheckin={handleCheckin} onBack={() => { window.history.replaceState({}, "", window.location.pathname); setCheckinId(null); }} /></div>;
+  if (checkinId) return <div style={{ maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}><CheckinScreen guestId={checkinId} onCheckin={handleCheckin} onBack={() => { setCheckinId(null); setCheckinDone(null); }} /></div>;
   if (!isAdmin) return <AdminLogin onLogin={() => setIsAdmin(true)} />;
 
   const tabs = [{ key: "register", label: "📝 Đăng ký" }, { key: "checkin", label: "📷 Check-in" }, { key: "list", label: `👥 DS (${guests.length})` }];
@@ -263,6 +322,7 @@ export default function App() {
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "16px 12px", fontFamily: "sans-serif" }}>
       {ticket && <TicketModal guest={ticket} onClose={() => setTicket(null)} />}
+      {showClearModal && <ClearListModal onConfirm={handleClearList} onCancel={() => setShowClearModal(false)} />}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
         <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>🎪 Hệ thống Check-in Sự kiện</div>
         <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 8, fontSize: 13 }}>
@@ -272,7 +332,7 @@ export default function App() {
         </div>
       </div>
       <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "#f0f0f0", borderRadius: 10, padding: 4 }}>
-        {tabs.map(t => <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: "9px 4px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: tab === t.key ? 700 : 400, background: tab === t.key ? "#fff" : "transparent", color: tab === t.key ? "#185FA5" : "#555", fontSize: 13, boxShadow: tab === t.key ? "0 1px 4px rgba(0,0,0,0.1)" : "none" }}>{t.label}</button>)}
+        {tabs.map(t => <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: "9px 4px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: tab === t.key ? 700 : 400, background: tab === t.key ? "#185FA5" : "transparent", color: tab === t.key ? "#fff" : "#555", fontSize: 12 }}>{t.label}</button>)}
       </div>
       {tab === "register" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -284,13 +344,13 @@ export default function App() {
           </div>
           <div>
             <label style={{ fontSize: 13, color: "#555", fontWeight: 600, display: "block", marginBottom: 6 }}>Loại Activity *</label>
-            <select value={form.activity} onChange={e => setForm(f => ({ ...f, activity: e.target.value }))} style={{ width: "100%", padding: "11px 14px", borderRadius: 8, border: "1px solid #ddd", fontSize: 15, background: "#fff" }}>
+            <select value={form.activity} onChange={e => setForm(f => ({ ...f, activity: e.target.value }))} style={{ width: "100%", padding: "11px 14px", borderRadius: 8, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
               {ACTIVITIES.map(a => <option key={a}>{a}</option>)}
             </select>
           </div>
           <div>
             <label style={{ fontSize: 13, color: "#555", fontWeight: 600, display: "block", marginBottom: 6 }}>Timeslot *</label>
-            <select value={form.timeslot} onChange={e => setForm(f => ({ ...f, timeslot: e.target.value }))} style={{ width: "100%", padding: "11px 14px", borderRadius: 8, border: "1px solid #ddd", fontSize: 15, background: "#fff" }}>
+            <select value={form.timeslot} onChange={e => setForm(f => ({ ...f, timeslot: e.target.value }))} style={{ width: "100%", padding: "11px 14px", borderRadius: 8, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
               {TIMESLOTS.map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
@@ -300,7 +360,8 @@ export default function App() {
           </button>
           <div style={{ background: "#f4f7fb", borderRadius: 10, padding: "12px 14px", fontSize: 12, color: "#555", lineHeight: 1.8 }}>
             🔐 <b>Mã BTC:</b><br />
-            {Object.keys(BTC_CODES).map(code => <span key={code} style={{ display: "inline-block", fontFamily: "monospace", fontSize: 13, color: "#185FA5", letterSpacing: 1, marginRight: 12 }}>{code}</span>)}<br />
+            {Object.keys(BTC_CODES).map(code => <span key={code} style={{ display: "inline-block", fontFamily: "monospace", fontSize: 13, color: "#185FA5", letterSpacing: 1, marginRight: 12 }}>{code}</span>)}
+            <br />
             <span style={{ color: "#aaa" }}>Chỉ chia sẻ mã này với nhân viên BTC được phân công.</span>
           </div>
         </div>
@@ -314,7 +375,7 @@ export default function App() {
                 onKeyDown={e => e.key === "Enter" && openCheckin(manualId)}
                 placeholder="Dán link hoặc mã 6 số..."
                 style={{ flex: 1, padding: "11px 14px", borderRadius: 8, border: "1px solid #ccc", fontSize: 14 }} />
-              <button onClick={() => openCheckin(manualId)} style={{ padding: "11px 18px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700 }}>Mở →</button>
+              <button onClick={() => openCheckin(manualId)} style={{ padding: "11px 18px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700 }}>Kiểm tra</button>
             </div>
           </div>
         </div>
@@ -326,6 +387,8 @@ export default function App() {
               style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: "1px solid #ddd", fontSize: 14, boxSizing: "border-box" }} />
             <button onClick={() => dbGetAll().then(rows => setGuests(rows.map(toGuest)))}
               style={{ padding: "10px 14px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>🔄</button>
+            <button onClick={() => setShowClearModal(true)}
+              style={{ padding: "10px 14px", background: "#e24b4a", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>🗑️ Xóa</button>
           </div>
           {loading && <div style={{ textAlign: "center", padding: 32, color: "#888" }}>⏳ Đang tải...</div>}
           {!loading && filtered.length === 0 && <div style={{ color: "#999", textAlign: "center", padding: 32 }}>Chưa có khách hàng nào</div>}
@@ -339,7 +402,7 @@ export default function App() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <button onClick={() => setTicket(g)} style={{ padding: "5px 10px", border: "1px solid #ddd", borderRadius: 6, background: "#f5f5f5", cursor: "pointer", fontSize: 12 }}>🎫 Vé</button>
-                {!g.checkedIn && <button onClick={() => setCheckinId(g.id)} style={{ padding: "5px 10px", border: "none", borderRadius: 6, background: "#185FA5", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>Check-in</button>}
+                {!g.checkedIn && <button onClick={() => setCheckinId(g.id)} style={{ padding: "5px 10px", border: "none", borderRadius: 6, background: "#185FA5", color: "#fff", cursor: "pointer", fontSize: 12 }}>📷</button>}
               </div>
             </div>
           ))}
